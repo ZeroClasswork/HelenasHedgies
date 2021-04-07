@@ -9,11 +9,16 @@ const favicon = require('serve-favicon');
 const logger = require('morgan');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
-const methodOverride = require('method-override')
+const methodOverride = require('method-override');
+
+// require our mailgun dependencies
+const nodemailer = require('nodemailer');
+const mg = require('nodemailer-mailgun-transport');
 
 const app = express();
 
 const mongoose = require('mongoose');
+const { domain } = require('process');
 mongoose.connect('mongodb://localhost/petes-pets');
 
 // view engine setup
@@ -32,6 +37,38 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
 
+// auth with our mailgun API key and domain
+const auth = {
+  auth: {
+    api_key: process.env.MAILGUN_API_KEY,
+    domain: process.env.EMAIL_DOMAIN
+  }
+}
+
+// create a mailer
+const nodemailerMailgun = nodemailer.createTransport(mg(auth));
+
+// SEND EMAIL
+const user = {
+  email: 'calc697@gmail.com',
+  name: 'Emily',
+  age: '43'
+};
+
+nodemailerMailgun.sendMail({
+  from: 'no-reply@atleastzero.codes',
+  to: user.email, // An array if you have multiple recipients.
+  subject: 'Hey you, awesome!',
+  template: {
+    name: 'email.handlebars',
+    engine: 'handlebars',
+    context: user
+  }
+}).then(info => {
+  console.log('Response: ' + info);
+}).catch(err => {
+  console.log('Error: ' + err);
+});
 
 require('./routes/index.js')(app);
 require('./routes/pets.js')(app);
